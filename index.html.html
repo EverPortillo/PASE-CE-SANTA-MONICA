@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Refrigerio Escolar - Control de Bodega y Cocina</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @media print {
+      body { background: white; color: black; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .page-break { page-break-before: always; }
+      .card-print { border: none !important; box-shadow: none !important; padding: 0 !important; }
+    }
+    .print-only { display: none; }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800 p-2 md:p-6">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+
+    <!-- ENCABEZADO INSTITUCIONAL -->
+    <header class="bg-blue-900 text-white p-5 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center no-print">
+      <div class="flex items-center gap-4">
+        <div class="bg-white p-2 rounded-lg text-3xl">🍎</div>
+        <div>
+          <h1 class="text-2xl font-bold">Control de Refrigerio Escolar y Bodega</h1>
+          <p class="text-blue-200 text-sm">Inventario en kg, Ajustes Físicos, Menú Diario y Asistencia de Madres</p>
+        </div>
+      </div>
+      <div class="mt-4 md:mt-0 flex gap-4 text-center">
+        <div class="bg-blue-800 px-4 py-2 rounded-lg border border-blue-700">
+          <span class="text-xs text-blue-300 block">Total Estudiantes</span>
+          <span id="header-total-alumnos" class="text-xl font-bold text-yellow-300">0</span>
+        </div>
+        <div class="bg-blue-800 px-4 py-2 rounded-lg border border-blue-700">
+          <span class="text-xs text-blue-300 block">Madres Registradas</span>
+          <span id="header-total-madres" class="text-xl font-bold text-yellow-300">0</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- NAVEGACIÓN POR PESTAÑAS (NO-PRINT) -->
+    <nav class="flex flex-wrap gap-2 border-b border-gray-300 pb-2 no-print">
+      <button onclick="cambiarPestana('tab-alumnos-inv')" id="btn-tab-alumnos-inv" class="tab-btn bg-blue-700 text-white font-semibold px-4 py-2 rounded-lg shadow">
+        📦 Bodega e Inventario Físico
+      </button>
+      <button onclick="cambiarPestana('tab-menu-egreso')" id="btn-tab-menu-egreso" class="tab-btn bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold px-4 py-2 rounded-lg">
+        🍲 Menú y Despacho Diario
+      </button>
+      <button onclick="cambiarPestana('tab-madres-cal')" id="btn-tab-madres-cal" class="tab-btn bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold px-4 py-2 rounded-lg">
+        👩‍🍳 Madres de Familia y Calendario
+      </button>
+      <button onclick="cambiarPestana('tab-informes')" id="btn-tab-informes" class="tab-btn bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold px-4 py-2 rounded-lg">
+        🖨️ Informes Imprimibles
+      </button>
+    </nav>
+
+    <!-- ================= PESTAÑA 1: MATRÍCULA, BODEGA Y AJUSTE FÍSICO ================= -->
+    <div id="tab-alumnos-inv" class="tab-content space-y-6">
+      
+      <!-- Matrícula -->
+      <section class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+        <h2 class="text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
+          <span>👥</span> Matrícula de Estudiantes por Nivel
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">Inicial y Parvularia</label>
+            <input type="number" id="cant-parvularia" value="25" min="0" oninput="actualizarMatricula()" 
+                   class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">Primer Ciclo (1° a 3°)</label>
+            <input type="number" id="cant-ciclo1" value="40" min="0" oninput="actualizarMatricula()" 
+                   class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-600 mb-1">Segundo/Tercer Ciclo y Bachillerato</label>
+            <input type="number" id="cant-ciclo23" value="50" min="0" oninput="actualizarMatricula()" 
+                   class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+      </section>
+
+      <!-- Operaciones de Bodega -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Formulario 1: Registrar Ingresos -->
+        <section class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+          <h2 class="text-lg font-bold text-green-700 mb-3 flex items-center gap-2">
+            <span>📥</span> Registrar Entradas a Bodega
+          </h2>
+          <form id="form-ingreso" onsubmit="registrarIngreso(event)" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Producto / Alimento</label>
+              <select id="ingreso-alimento" required class="w-full border border-gray-300 rounded-lg p-2.5 mt-1 text-sm">
+                <option value="Arroz">Arroz</option>
+                <option value="Frijol">Frijol</option>
+                <option value="Aceite">Aceite</option>
+                <option value="Azúcar">Azúcar</option>
+                <option value="Biofortik">Biofortik</option>
+                <option value="Bebida">Bebida Fortificada</option>
+                <option value="Leche">Leche</option>
+                <option value="Cereal">Cereal</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Cantidad Recibida (en kg)</label>
+              <input type="number" step="0.01" id="ingreso-cantidad" placeholder="Ej: 25.0" required class="w-full border border-gray-300 rounded-lg p-2.5 mt-1 text-sm">
+            </div>
+            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-lg transition text-sm">
+              + Añadir Entradas
+            </button>
+          </form>
+        </section>
+
+        <!-- Formulario 2: Modificación / Revisión Física -->
+        <section class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+          <h2 class="text-lg font-bold text-indigo-900 mb-3 flex items-center gap-2">
+            <span>🛠️</span> Modificar por Revisión Física
+          </h2>
+          <form id="form-ajuste" onsubmit="registrarAjusteFisico(event)" class="space-y-3">
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Producto a Modificar</label>
+              <select id="ajuste-alimento" onchange="cargarFormularioAjuste()" required class="w-full border border-gray-300 rounded-lg p-2.5 mt-1 text-sm">
+                <option value="Arroz">Arroz</option>
+                <option value="Frijol">Frijol</option>
+                <option value="Aceite">Aceite</option>
+                <option value="Azúcar">Azúcar</option>
+                <option value="Biofortik">Biofortik</option>
+                <option value="Bebida">Bebida Fortificada</option>
+                <option value="Leche">Leche</option>
+                <option value="Cereal">Cereal</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Nuevo Stock Físico Real (kg)</label>
+              <input type="number" step="0.01" id="ajuste-cantidad-real" placeholder="Conteo real de inventario..." required class="w-full border border-gray-300 rounded-lg p-2.5 mt-1 text-sm">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700">Cuadro de Observaciones / Motivo</label>
+              <textarea id="ajuste-observacion" rows="2" placeholder="Ej: Conteo físico de auditoría / merma por saco dañado..." required class="w-full border border-gray-300 rounded-lg p-2.5 mt-1 text-sm"></textarea>
+            </div>
+            <button type="submit" class="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2.5 rounded-lg transition text-sm">
+              💾 Actualizar Stock Físico
+            </button>
+          </form>
+        </section>
+
+        <!-- Tabla de Estado de Bodega -->
+        <section class="lg:col-span-3 bg-white p-5 rounded-xl shadow-md border border-gray-200 overflow-x-auto">
+          <h2 class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+            <span>📦</span> Estado Actual de Productos en Bodega
+          </h2>
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-gray-100 text-gray-600 text-xs uppercase">
+                <th class="p-2.5 border-b">Alimento</th>
+                <th class="p-2.5 border-b text-right">Ingresos (kg)</th>
+                <th class="p-2.5 border-b text-right">Consumido (kg)</th>
+                <th class="p-2.5 border-b text-right">Ajuste Físico (kg)</th>
+                <th class="p-2.5 border-b text-right">Stock Físico Real (kg)</th>
+                <th class="p-2.5 border-b">Observaciones de Auditoría</th>
+                <th class="p-2.5 border-b text-center">Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-stock-body" class="divide-y divide-gray-200 text-sm">
+              <!-- Render con JS -->
+            </tbody>
+          </table>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ================= PESTAÑA 2: MENÚ Y EGRESOS DIARIOS ================= -->
+    <div id="tab-menu-egreso" class="tab-content hidden space-y-6">
+      
+      <section class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+        <h2 class="text-lg font-bold text-orange-800 mb-2 flex items-center gap-2">
+          <span>🍲</span> Menú Semanal y Despacho Diario de Alimentos
+        </h2>
+        <p class="text-sm text-gray-600 mb-4">Selecciona el día de la semana y la receta. Las cantidades necesarias en kilogramos se calcularán automáticamente según la matrícula de alumnos.</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Día de la Semana</label>
+            <select id="select-dia-semana" onchange="cargarOpcionesMenu()" class="w-full border border-gray-300 rounded-lg p-2.5 font-medium">
+              <option value="LUNES">LUNES</option>
+              <option value="MARTES">MARTES</option>
+              <option value="MIÉRCOLES">MIÉRCOLES</option>
+              <option value="JUEVES">JUEVES</option>
+              <option value="VIERNES">VIERNES</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Platillo / Receta del Menú</label>
+            <select id="select-platillo" onchange="calcularIngredientesPlatillo()" class="w-full border border-gray-300 rounded-lg p-2.5 font-medium">
+              <!-- Opciones cargadas dinámicamente -->
+            </select>
+          </div>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-200 p-4 rounded-xl mb-6">
+          <h3 class="font-bold text-orange-900 text-md mb-2">Ingredientes Requeridos para la Jornada (Calculados):</h3>
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="border-b border-orange-200 text-orange-800 text-xs">
+                <th class="py-2">Ingrediente</th>
+                <th class="py-2 text-center">Ración Parvularia</th>
+                <th class="py-2 text-center">Ración 1er Ciclo</th>
+                <th class="py-2 text-center">Ración 2°-3er Ciclo/Bach</th>
+                <th class="py-2 text-right font-bold">Total a Descontar (kg)</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-calculo-menu" class="divide-y divide-orange-100">
+              <!-- Carga dinámicamente -->
+            </tbody>
+          </table>
+        </div>
+
+        <button onclick="descontarMenuDiario()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-lg shadow transition flex justify-center items-center gap-2">
+          <span>📤</span> Confirmar y Descontar Ingredientes del Inventario
+        </button>
+      </section>
+
+    </div>
+
+    <!-- ================= PESTAÑA 3: MADRES Y CALENDARIO ================= -->
+    <div id="tab-madres-cal" class="tab-content hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <section class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+          <h2 class="text-lg font-bold text-purple-900 mb-3 flex items-center gap-2">
+            <span>👩‍🍳</span> Registro de Madres de Familia
+          </h2>
+          <form onsubmit="agregarMadre(event)" class="flex gap-2 mb-4">
+            <input type="text" id="input-nombre-madre" placeholder="Nombre completo..." required class="w-full border border-gray-300 rounded-lg p-2.5 text-sm">
+            <button type="submit" class="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2.5 rounded-lg text-sm font-semibold shrink-0">
+              + Agregar
+            </button>
+          </form>
+
+          <div class="max-h-60 overflow-y-auto">
+            <ul id="lista-madres" class="divide-y divide-gray-100 text-sm">
+              <!-- Render lista madres -->
+            </ul>
+          </div>
+        </section>
+
+        <section class="lg:col-span-2 bg-white p-5 rounded-xl shadow-md border border-gray-200">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <span>📅</span> Calendario de Asignación de Cocina
+            </h2>
+            <div class="flex gap-2">
+              <input type="month" id="select-mes-calendario" class="border border-gray-300 rounded-lg p-2 text-sm">
+              <button onclick="generarCalendarioMes()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-semibold">
+                ⚡ Generar Calendario Próximo Mes
+              </button>
+            </div>
+          </div>
+
+          <p class="text-xs text-gray-500 mb-3">El sistema asignará automáticamente 1 madre de familia por día hábil (Lunes a Viernes) en turno rotativo.</p>
+
+          <div class="max-h-96 overflow-y-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-gray-50 text-gray-600 text-xs">
+                <tr>
+                  <th class="p-2.5">Fecha</th>
+                  <th class="p-2.5">Día</th>
+                  <th class="p-2.5">Madre Asignada</th>
+                  <th class="p-2.5 text-center">Asistencia</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-calendario-body" class="divide-y divide-gray-200">
+                <!-- Render del calendario -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ================= PESTAÑA 4: INFORMES IMPRIMIBLES ================= -->
+    <div id="tab-informes" class="tab-content hidden space-y-6">
+      
+      <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200 no-print flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Centro de Informes e Inspección de Bodega</h2>
+          <p class="text-xs text-gray-500">Selecciona el tipo de informe que deseas generar e imprimir en papel o guardar en formato PDF.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="imprimirInforme('bodega')" class="bg-indigo-700 hover:bg-indigo-800 text-white font-semibold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2">
+            🖨️ Imprimir Informe de Bodega
+          </button>
+          <button onclick="imprimirInforme('alimentos')" class="bg-green-700 hover:bg-green-800 text-white font-semibold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2">
+            🖨️ Informe Consumo Alimentos
+          </button>
+          <button onclick="imprimirInforme('asistencia')" class="bg-purple-700 hover:bg-purple-800 text-white font-semibold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2">
+            🖨️ Informe Asistencia Madres
+          </button>
+        </div>
+      </div>
+
+      <!-- INFORME 1: BODEGA Y AJUSTE FÍSICO (NUEVO IMPRIMIBLE) -->
+      <div id="reporte-bodega" class="bg-white p-8 rounded-xl shadow-md border border-gray-200 card-print">
+        <div class="text-center mb-6 border-b pb-4">
+          <h2 class="text-xl font-bold uppercase text-gray-900">Ministerio de Educación, Ciencia y Tecnología</h2>
+          <h3 class="text-md font-semibold text-gray-700">Informe de Revisión Física de Bodega e Inventario</h3>
+          <p class="text-xs text-gray-500 mt-1">Fecha de Inspección / Impresión: <span id="reporte-fecha-bodega"></span></p>
+        </div>
+
+        <table class="w-full text-left border-collapse text-xs mb-6">
+          <thead>
+            <tr class="bg-gray-100 text-gray-800 border-b-2 border-gray-400 uppercase">
+              <th class="p-2 border">Alimento</th>
+              <th class="p-2 text-right border">Entradas (kg)</th>
+              <th class="p-2 text-right border">Salidas (kg)</th>
+              <th class="p-2 text-right border">Ajuste (kg)</th>
+              <th class="p-2 text-right border">Stock Físico (kg)</th>
+              <th class="p-2 border">Observaciones de Revisión</th>
+            </tr>
+          </thead>
+          <tbody id="reporte-bodega-body" class="divide-y divide-gray-300">
+            <!-- Render dinámico -->
+          </tbody>
+        </table>
+
+        <div class="pt-12 grid grid-cols-2 gap-8 text-center text-xs">
+          <div>
+            ____________________________________________<br>
+            <strong>Director(a) del Centro Educativo</strong>
+          </div>
+          <div>
+            ____________________________________________<br>
+            <strong>Auditor / Encargado de Bodega</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- INFORME 2: CONSUMO DE ALIMENTOS -->
+      <div id="reporte-alimentos" class="bg-white p-8 rounded-xl shadow-md border border-gray-200 card-print page-break">
+        <div class="text-center mb-6 border-b pb-4">
+          <h2 class="text-xl font-bold uppercase text-gray-900">Ministerio de Educación, Ciencia y Tecnología</h2>
+          <h3 class="text-md font-semibold text-gray-700">Informe Mensual de Consumo de Alimentos - Refrigerio Escolar</h3>
+          <p class="text-xs text-gray-500 mt-1">Generado el: <span id="reporte-fecha-hoy"></span></p>
+        </div>
+
+        <table class="w-full text-left border-collapse text-sm mb-6">
+          <thead>
+            <tr class="bg-gray-100 text-gray-800 border-b-2 border-gray-400">
+              <th class="p-2">Alimento / Insumo</th>
+              <th class="p-2 text-right">Ingresos Totales (kg)</th>
+              <th class="p-2 text-right">Egresos / Consumido (kg)</th>
+              <th class="p-2 text-right">Saldo Restante (kg)</th>
+            </tr>
+          </thead>
+          <tbody id="reporte-alimentos-body" class="divide-y divide-gray-300">
+            <!-- Render dinámico -->
+          </tbody>
+        </table>
+
+        <div class="pt-12 grid grid-cols-2 gap-8 text-center text-xs">
+          <div>
+            ____________________________________________<br>
+            <strong>Director(a) del Centro Educativo</strong>
+          </div>
+          <div>
+            ____________________________________________<br>
+            <strong>Encargado(a) de Inventario</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- INFORME 3: ASISTENCIA DE MADRES -->
+      <div id="reporte-asistencia" class="bg-white p-8 rounded-xl shadow-md border border-gray-200 card-print page-break">
+        <div class="text-center mb-6 border-b pb-4">
+          <h2 class="text-xl font-bold uppercase text-gray-900">Ministerio de Educación, Ciencia y Tecnología</h2>
+          <h3 class="text-md font-semibold text-gray-700">Informe de Control de Asistencia - Madres Cocineras</h3>
+          <p class="text-xs text-gray-500 mt-1">Reporte de Cumplimiento de Turnos de Preparación de Alimentos</p>
+        </div>
+
+        <table class="w-full text-left border-collapse text-sm mb-6">
+          <thead>
+            <tr class="bg-gray-100 text-gray-800 border-b-2 border-gray-400">
+              <th class="p-2">Nombre de la Madre de Familia</th>
+              <th class="p-2 text-center">Turnos Asignados</th>
+              <th class="p-2 text-center">Días Asistidos (Llegó)</th>
+              <th class="p-2 text-center">Faltas (No Llegó)</th>
+              <th class="p-2 text-right">% Cumplimiento</th>
+            </tr>
+          </thead>
+          <tbody id="reporte-asistencia-body" class="divide-y divide-gray-300">
+            <!-- Render dinámico -->
+          </tbody>
+        </table>
+
+        <div class="pt-12 grid grid-cols-2 gap-8 text-center text-xs">
+          <div>
+            ____________________________________________<br>
+            <strong>Director(a) del Centro Educativo</strong>
+          </div>
+          <div>
+            ____________________________________________<br>
+            <strong>Presidente / Coordinador de Madres</strong>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- LÓGICA JAVASCRIPT -->
+  <script>
+    // Gramajes Oficiales por Alumno (en gramos)
+    const GRAMAJES = {
+      'Arroz':     { parv: 20, c1: 30, c23: 30 },
+      'Frijol':    { parv: 20, c1: 30, c23: 30 },
+      'Aceite':    { parv: 5,  c1: 5,  c23: 5  },
+      'Azúcar':    { parv: 20, c1: 20, c23: 20 },
+      'Biofortik': { parv: 30, c1: 30, c23: 0  },
+      'Bebida':    { parv: 0,  c1: 0,  c23: 15 },
+      'Leche':     { parv: 25, c1: 30, c23: 30 },
+      'Cereal':    { parv: 35, c1: 35, c23: 0  }
+    };
+
+    // Menú Semanal Oficial
+    const MENU_SEMANAL = {
+      'LUNES': [
+        { nombre: 'Arroz con Leche', ingredientes: ['Arroz', 'Azúcar', 'Leche'] },
+        { nombre: 'Ensalada de frijoles con arroz y bebida fortificada', ingredientes: ['Arroz', 'Frijol', 'Bebida'] },
+        { nombre: 'Leche con Cereal', ingredientes: ['Leche', 'Cereal'] },
+        { nombre: 'Enchilada con frijoles molidos y bebida fortificada', ingredientes: ['Arroz', 'Aceite', 'Frijol', 'Bebida'] }
+      ],
+      'MARTES': [
+        { nombre: 'Casamiento y Bebida Fortificada', ingredientes: ['Arroz', 'Frijol', 'Aceite', 'Bebida'] },
+        { nombre: 'Leche con Cereal', ingredientes: ['Leche', 'Cereal'] },
+        { nombre: 'Pupusas de arroz con frijoles y leche con frutas', ingredientes: ['Arroz', 'Frijol', 'Aceite', 'Leche'] }
+      ],
+      'MIÉRCOLES': [
+        { nombre: 'Leche con Cereal', ingredientes: ['Leche', 'Cereal'] },
+        { nombre: 'Pupusas de arroz con frijoles y leche con frutas', ingredientes: ['Arroz', 'Frijol', 'Aceite', 'Leche'] },
+        { nombre: 'Frijoles molidos y bebida fortificada', ingredientes: ['Frijol', 'Aceite', 'Bebida'] },
+        { nombre: 'Poleada a base de harina de arroz y leche', ingredientes: ['Arroz', 'Azúcar', 'Leche'] }
+      ],
+      'JUEVES': [
+        { nombre: 'Frijoles molidos y bebida fortificada', ingredientes: ['Frijol', 'Aceite', 'Bebida'] },
+        { nombre: 'Poleada a base de harina de arroz y leche', ingredientes: ['Arroz', 'Azúcar', 'Leche'] },
+        { nombre: 'Arroz con Leche', ingredientes: ['Arroz', 'Azúcar', 'Leche'] },
+        { nombre: 'Sopa de frijoles con tortillas de arroz y bebida', ingredientes: ['Arroz', 'Frijol', 'Aceite', 'Bebida'] }
+      ],
+      'VIERNES': [
+        { nombre: 'Pastelitos con frijoles y bebida fortificada', ingredientes: ['Arroz', 'Aceite', 'Frijol', 'Bebida'] },
+        { nombre: 'Enchilada con frijoles molidos y bebida fortificada', ingredientes: ['Arroz', 'Aceite', 'Frijol', 'Bebida'] },
+        { nombre: 'Leche con Cereal', ingredientes: ['Leche', 'Cereal'] }
+      ]
+    };
+
+    // Estado del Inventario con Ajustes y Cuadro de Observaciones
+    let inventario = {
+      'Arroz':     { ingresos: 100, egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Frijol':    { ingresos: 80,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Aceite':    { ingresos: 20,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Azúcar':    { ingresos: 50,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Biofortik': { ingresos: 40,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Bebida':    { ingresos: 30,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Leche':     { ingresos: 60,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' },
+      'Cereal':    { ingresos: 40,  egresos: 0, ajuste: 0, observacion: 'Sin novedades en inventario.' }
+    };
+
+    let madres = ['María Ramos', 'Ana López', 'Carmen Flores', 'Sonia Gómez', 'Rosa Hernández'];
+    let calendarioAsignaciones = [];
+
+    function cambiarPestana(idTab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-blue-700', 'text-white');
+        btn.classList.add('bg-gray-200', 'text-gray-700');
+      });
+
+      document.getElementById(idTab).classList.remove('hidden');
+      document.getElementById('btn-' + idTab).classList.add('bg-blue-700', 'text-white');
+      document.getElementById('btn-' + idTab).classList.remove('bg-gray-200', 'text-gray-700');
+
+      if(idTab === 'tab-informes') actualizarInformes();
+    }
+
+    function actualizarMatricula() {
+      const p = parseInt(document.getElementById('cant-parvularia').value) || 0;
+      const c1 = parseInt(document.getElementById('cant-ciclo1').value) || 0;
+      const c23 = parseInt(document.getElementById('cant-ciclo23').value) || 0;
+      document.getElementById('header-total-alumnos').innerText = p + c1 + c23;
+      calcularIngredientesPlatillo();
+    }
+
+    // Calcular Stock Real: Ingresos - Egresos + Ajustes
+    function obtenerStockReal(prod) {
+      const p = inventario[prod];
+      return p.ingresos - p.egresos + p.ajuste;
+    }
+
+    // Renderizar Tabla de Bodega
+    function renderInventario() {
+      const tbody = document.getElementById('tabla-stock-body');
+      tbody.innerHTML = '';
+
+      for (const [prod, datos] of Object.entries(inventario)) {
+        const stockReal = obtenerStockReal(prod);
+        let badge = '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Disponible</span>';
+        if(stockReal <= 0) badge = '<span class="bg-red-100 text-red-800 text-xs px-2 py-1 rounded font-bold">Agotado</span>';
+        else if(stockReal < 5) badge = '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Bajo</span>';
+
+        tbody.innerHTML += `
+          <tr>
+            <td class="p-2.5 font-semibold text-gray-800">${prod}</td>
+            <td class="p-2.5 text-right text-gray-600">${datos.ingresos.toFixed(2)}</td>
+            <td class="p-2.5 text-right text-gray-600">${datos.egresos.toFixed(2)}</td>
+            <td class="p-2.5 text-right ${datos.ajuste < 0 ? 'text-red-600' : 'text-green-600'} font-bold">${datos.ajuste > 0 ? '+' : ''}${datos.ajuste.toFixed(2)}</td>
+            <td class="p-2.5 text-right font-bold text-gray-900">${stockReal.toFixed(2)}</td>
+            <td class="p-2.5 text-xs text-gray-600 italic">${datos.observacion}</td>
+            <td class="p-2.5 text-center">${badge}</td>
+          </tr>
+        `;
+      }
+    }
+
+    function registrarIngreso(e) {
+      e.preventDefault();
+      const prod = document.getElementById('ingreso-alimento').value;
+      const cant = parseFloat(document.getElementById('ingreso-cantidad').value);
+
+      if (cant > 0) {
+        inventario[prod].ingresos += cant;
+        document.getElementById('form-ingreso').reset();
+        renderInventario();
+      }
+    }
+
+    // Cargar datos actuales en el formulario de ajuste
+    function cargarFormularioAjuste() {
+      const prod = document.getElementById('ajuste-alimento').value;
+      const stockActual = obtenerStockReal(prod);
+      document.getElementById('ajuste-cantidad-real').value = stockActual.toFixed(2);
+      document.getElementById('ajuste-observacion').value = inventario[prod].observacion;
+    }
+
+    // Registrar Modificación por Revisión Física
+    function registrarAjusteFisico(e) {
+      e.preventDefault();
+      const prod = document.getElementById('ajuste-alimento').value;
+      const nuevoStockFisico = parseFloat(document.getElementById('ajuste-cantidad-real').value);
+      const obs = document.getElementById('ajuste-observacion').value.trim();
+
+      // Calcular diferencia de ajuste necesaria
+      const stockTeorico = inventario[prod].ingresos - inventario[prod].egresos;
+      const diferencia = nuevoStockFisico - stockTeorico;
+
+      inventario[prod].ajuste = diferencia;
+      inventario[prod].observacion = obs || 'Ajuste por revisión física de inventario.';
+
+      renderInventario();
+      alert(`✅ ¡Inventario de ${prod} modificado con éxito! Stock físico ajustado a: ${nuevoStockFisico.toFixed(2)} kg.`);
+    }
+
+    // Menú y Egresos
+    function cargarOpcionesMenu() {
+      const dia = document.getElementById('select-dia-semana').value;
+      const selectPlatillo = document.getElementById('select-platillo');
+      selectPlatillo.innerHTML = '';
+
+      MENU_SEMANAL[dia].forEach((receta, index) => {
+        selectPlatillo.innerHTML += `<option value="${index}">${receta.nombre}</option>`;
+      });
+
+      calcularIngredientesPlatillo();
+    }
+
+    function calcularIngredientesPlatillo() {
+      const dia = document.getElementById('select-dia-semana').value;
+      const idx = document.getElementById('select-platillo').value || 0;
+      const receta = MENU_SEMANAL[dia][idx];
+
+      const p = parseInt(document.getElementById('cant-parvularia').value) || 0;
+      const c1 = parseInt(document.getElementById('cant-ciclo1').value) || 0;
+      const c23 = parseInt(document.getElementById('cant-ciclo23').value) || 0;
+
+      const tbody = document.getElementById('tabla-calculo-menu');
+      tbody.innerHTML = '';
+
+      if (!receta) return;
+
+      receta.ingredientes.forEach(ing => {
+        const g = GRAMAJES[ing];
+        const totalGramos = (p * g.parv) + (c1 * g.c1) + (c23 * g.c23);
+        const totalKg = totalGramos / 1000;
+
+        tbody.innerHTML += `
+          <tr>
+            <td class="py-2 font-bold text-gray-800">${ing}</td>
+            <td class="py-2 text-center text-xs">${g.parv}g</td>
+            <td class="py-2 text-center text-xs">${g.c1}g</td>
+            <td class="py-2 text-center text-xs">${g.c23}g</td>
+            <td class="py-2 text-right font-bold text-orange-900">${totalKg.toFixed(3)} kg</td>
+          </tr>
+        `;
+      });
+    }
+
+    function descontarMenuDiario() {
+      const dia = document.getElementById('select-dia-semana').value;
+      const idx = document.getElementById('select-platillo').value || 0;
+      const receta = MENU_SEMANAL[dia][idx];
+
+      const p = parseInt(document.getElementById('cant-parvularia').value) || 0;
+      const c1 = parseInt(document.getElementById('cant-ciclo1').value) || 0;
+      const c23 = parseInt(document.getElementById('cant-ciclo23').value) || 0;
+
+      let faltantes = [];
+
+      receta.ingredientes.forEach(ing => {
+        const g = GRAMAJES[ing];
+        const totalKg = ((p * g.parv) + (c1 * g.c1) + (c23 * g.c23)) / 1000;
+        const disponible = obtenerStockReal(ing);
+        if (totalKg > disponible) {
+          faltantes.push(`${ing} (Requiere: ${totalKg.toFixed(2)} kg, Disponible: ${disponible.toFixed(2)} kg)`);
+        }
+      });
+
+      if (faltantes.length > 0) {
+        alert("⚠️ No se puede descontar. Stock insuficiente:\n\n" + faltantes.join("\n"));
+        return;
+      }
+
+      receta.ingredientes.forEach(ing => {
+        const g = GRAMAJES[ing];
+        const totalKg = ((p * g.parv) + (c1 * g.c1) + (c23 * g.c23)) / 1000;
+        inventario[ing].egresos += totalKg;
+      });
+
+      renderInventario();
+      cargarFormularioAjuste();
+      alert(`✅ ¡Se descontaron los ingredientes para: "${receta.nombre}"!`);
+    }
+
+    // Madres y Calendario
+    function renderMadres() {
+      const ul = document.getElementById('lista-madres');
+      ul.innerHTML = '';
+      document.getElementById('header-total-madres').innerText = madres.length;
+
+      madres.forEach((madre, index) => {
+        ul.innerHTML += `
+          <li class="py-2 flex justify-between items-center">
+            <span>👩 ${madre}</span>
+            <button onclick="eliminarMadre(${index})" class="text-red-600 hover:text-red-800 text-xs font-bold">Eliminar</button>
+          </li>
+        `;
+      });
+    }
+
+    function agregarMadre(e) {
+      e.preventDefault();
+      const input = document.getElementById('input-nombre-madre');
+      if (input.value.trim() !== '') {
+        madres.push(input.value.trim());
+        input.value = '';
+        renderMadres();
+      }
+    }
+
+    function eliminarMadre(index) {
+      madres.splice(index, 1);
+      renderMadres();
+    }
+
+    function generarCalendarioMes() {
+      if (madres.length === 0) {
+        alert("⚠️ Registra al menos una madre de familia.");
+        return;
+      }
+
+      const mesVal = document.getElementById('select-mes-calendario').value;
+      if (!mesVal) {
+        alert("Selecciona mes y año.");
+        return;
+      }
+
+      const [year, month] = mesVal.split('-').map(Number);
+      const diasEnMes = new Date(year, month, 0).getDate();
+
+      calendarioAsignaciones = [];
+      let madreIndex = 0;
+
+      for (let d = 1; d <= diasEnMes; d++) {
+        const fecha = new Date(year, month - 1, d);
+        const diaSemana = fecha.getDay();
+
+        if (diaSemana >= 1 && diaSemana <= 5) {
+          const nombresDias = ['DOMINGO', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+          calendarioAsignaciones.push({
+            fechaStr: `${d.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`,
+            diaNombre: nombresDias[diaSemana],
+            madre: madres[madreIndex % madres.length],
+            estado: 'Pendiente'
+          });
+          madreIndex++;
+        }
+      }
+
+      renderCalendario();
+    }
+
+    function renderCalendario() {
+      const tbody = document.getElementById('tabla-calendario-body');
+      tbody.innerHTML = '';
+
+      if (calendarioAsignaciones.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">Presiona "Generar Calendario" para programar el mes.</td></tr>`;
+        return;
+      }
+
+      calendarioAsignaciones.forEach((item, index) => {
+        tbody.innerHTML += `
+          <tr>
+            <td class="p-2.5 font-medium">${item.fechaStr}</td>
+            <td class="p-2.5 text-xs text-gray-500 font-bold">${item.diaNombre}</td>
+            <td class="p-2.5 font-semibold text-gray-800">${item.madre}</td>
+            <td class="p-2.5 text-center">
+              <select onchange="cambiarAsistencia(${index}, this.value)" class="text-xs p-1 border rounded font-semibold ${
+                item.estado === 'Llegó' ? 'bg-green-100 text-green-800' : item.estado === 'No Llegó' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'
+              }">
+                <option value="Pendiente" ${item.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                <option value="Llegó" ${item.estado === 'Llegó' ? 'selected' : ''}>Llegó ✅</option>
+                <option value="No Llegó" ${item.estado === 'No Llegó' ? 'selected' : ''}>No Llegó ❌</option>
+              </select>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function cambiarAsistencia(index, nuevoEstado) {
+      calendarioAsignaciones[index].estado = nuevoEstado;
+      renderCalendario();
+    }
+
+    // Generar Informes Imprimibles
+    function actualizarInformes() {
+      const hoy = new Date().toLocaleDateString('es-ES');
+      document.getElementById('reporte-fecha-bodega').innerText = hoy;
+      document.getElementById('reporte-fecha-hoy').innerText = hoy;
+
+      // 1. Informe de Bodega y Ajustes
+      const bodyBodega = document.getElementById('reporte-bodega-body');
+      bodyBodega.innerHTML = '';
+      for (const [prod, datos] of Object.entries(inventario)) {
+        const stockReal = obtenerStockReal(prod);
+        bodyBodega.innerHTML += `
+          <tr>
+            <td class="p-2 border font-bold">${prod}</td>
+            <td class="p-2 text-right border">${datos.ingresos.toFixed(2)}</td>
+            <td class="p-2 text-right border text-red-700">${datos.egresos.toFixed(2)}</td>
+            <td class="p-2 text-right border font-bold ${datos.ajuste < 0 ? 'text-red-600' : 'text-green-600'}">${datos.ajuste > 0 ? '+' : ''}${datos.ajuste.toFixed(2)}</td>
+            <td class="p-2 text-right border font-bold">${stockReal.toFixed(2)}</td>
+            <td class="p-2 border text-xs italic">${datos.observacion}</td>
+          </tr>
+        `;
+      }
+
+      // 2. Informe Consumo Alimentos
+      const bodyAlimentos = document.getElementById('reporte-alimentos-body');
+      bodyAlimentos.innerHTML = '';
+      for (const [prod, datos] of Object.entries(inventario)) {
+        const stockReal = obtenerStockReal(prod);
+        bodyAlimentos.innerHTML += `
+          <tr>
+            <td class="p-2 font-semibold">${prod}</td>
+            <td class="p-2 text-right">${datos.ingresos.toFixed(2)} kg</td>
+            <td class="p-2 text-right text-red-700 font-medium">${datos.egresos.toFixed(2)} kg</td>
+            <td class="p-2 text-right font-bold">${stockReal.toFixed(2)} kg</td>
+          </tr>
+        `;
+      }
+
+      // 3. Informe Asistencia
+      const bodyAsistencia = document.getElementById('reporte-asistencia-body');
+      bodyAsistencia.innerHTML = '';
+
+      madres.forEach(madre => {
+        const turnos = calendarioAsignaciones.filter(c => c.madre === madre);
+        const totalTurnos = turnos.length;
+        const llego = turnos.filter(c => c.estado === 'Llegó').length;
+        const noLlego = turnos.filter(c => c.estado === 'No Llegó').length;
+        const pct = totalTurnos > 0 ? ((llego / totalTurnos) * 100).toFixed(0) : 0;
+
+        bodyAsistencia.innerHTML += `
+          <tr>
+            <td class="p-2 font-semibold">${madre}</td>
+            <td class="p-2 text-center">${totalTurnos}</td>
+            <td class="p-2 text-center text-green-700 font-bold">${llego}</td>
+            <td class="p-2 text-center text-red-700 font-bold">${noLlego}</td>
+            <td class="p-2 text-right font-bold">${pct}%</td>
+          </tr>
+        `;
+      });
+    }
+
+    function imprimirInforme(tipo) {
+      actualizarInformes();
+      
+      // Ocultar reportes no seleccionados temporalmente para imprimir limpio
+      document.getElementById('reporte-bodega').style.display = (tipo === 'bodega') ? 'block' : 'none';
+      document.getElementById('reporte-alimentos').style.display = (tipo === 'alimentos') ? 'block' : 'none';
+      document.getElementById('reporte-asistencia').style.display = (tipo === 'asistencia') ? 'block' : 'none';
+
+      window.print();
+
+      // Restaurar vista
+      document.getElementById('reporte-bodega').style.display = 'block';
+      document.getElementById('reporte-alimentos').style.display = 'block';
+      document.getElementById('reporte-asistencia').style.display = 'block';
+    }
+
+    // Inicialización al cargar la página
+    window.onload = function() {
+      const hoy = new Date();
+      const mesStr = `${hoy.getFullYear()}-${(hoy.getMonth()+1).toString().padStart(2, '0')}`;
+      document.getElementById('select-mes-calendario').value = mesStr;
+
+      actualizarMatricula();
+      renderInventario();
+      cargarFormularioAjuste();
+      cargarOpcionesMenu();
+      renderMadres();
+      generarCalendarioMes();
+    };
+  </script>
+</body>
+</html>
